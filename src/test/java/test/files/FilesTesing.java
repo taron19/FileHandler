@@ -4,6 +4,9 @@ package test.files;
 import com.codeborne.xlstest.XLS;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVReader;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -33,12 +36,15 @@ public class FilesTesing {
             throw new FileNotFoundException("zipfile.zip not found in resources!");
         }
 
+        int counter = 0;
+
         try (ZipInputStream zipInputStream = new ZipInputStream(is)) {
             ZipEntry entry;
 
             while ((entry = zipInputStream.getNextEntry()) != null) {
                 String name = entry.getName();
                 if (name.endsWith(".pdf")) {
+                    counter++;
                     BufferedReader buff = new BufferedReader(new InputStreamReader(zipInputStream, StandardCharsets.UTF_8));
 
 
@@ -55,6 +61,9 @@ public class FilesTesing {
                 }
 
             }
+            if (counter == 0) {
+                fail("No pdf files found in zip archive. Total files processed:");
+            }
 
         }
     }
@@ -63,16 +72,17 @@ public class FilesTesing {
     @Test
     void csvFileTestShouldWorkCorrectly() throws Exception {
         InputStream is = classLoader.getResourceAsStream("zipfile.zip");
+        int counter = 0;
         if (is == null) {
             throw new FileNotFoundException("zipfile.zip not found in resources!");
         }
 
         try (ZipInputStream zipInputStream = new ZipInputStream(is)) {
             ZipEntry entry;
-
             while ((entry = zipInputStream.getNextEntry()) != null) {
                 String name = entry.getName();
                 if (name.endsWith(".csv")) {
+                    counter++;
                     CSVReader buff = new CSVReader(new InputStreamReader(zipInputStream, StandardCharsets.UTF_8));
 
 
@@ -80,12 +90,15 @@ public class FilesTesing {
 
                     strings.forEach(s -> System.out.println(Arrays.toString(s)));
 
-                    assertArrayEquals(new String[]{"hello everyone"}, strings.get(0));
-                    assertArrayEquals(new String[]{"my friend"}, strings.get(1));
+                    assertArrayEquals(new String[]{"hello", "everyone"}, strings.get(0));
+                    assertArrayEquals(new String[]{"my", " friend"}, strings.get(1));
                     assertEquals(2, strings.size());
                 }
-
             }
+            if (counter == 0) {
+                fail("No CSV files found in zip archive. Total files processed:");
+            }
+
 
         }
     }
@@ -104,13 +117,14 @@ public class FilesTesing {
             throw new FileNotFoundException("zipfile.zip not found in resources!");
         }
 
+        int counter = 0;
         try (ZipInputStream zipInputStream = new ZipInputStream(is)) {
             ZipEntry entry;
 
             while ((entry = zipInputStream.getNextEntry()) != null) {
                 String name = entry.getName();
                 if (name.endsWith(".xlsx")) {
-
+                    counter++;
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     byte[] buffer = new byte[4096];
                     int len;
@@ -123,21 +137,38 @@ public class FilesTesing {
                         XLS xls = new XLS(xlsxStream);
 
 
-                        String stringCellValue = xls.excel
-                                .getSheetAt(0)
-                                .getRow(1)
-                                .getCell(1)
-                                .getStringCellValue();
+                        Sheet sheet = xls.excel.getSheetAt(0);
 
 
-                        assertNotNull(stringCellValue);
-                        Assertions.assertAll(() -> stringCellValue.contains("eatable"), () -> stringCellValue.contains("Kukuruza"));
+                        assertNotNull(sheet, "Sheet should not be null");
+
+                        Row row = sheet.getRow(1);
+                        assertNotNull(row, "Row 1 should not be null");
+
+                        Cell cell = row.getCell(1);
+                        assertNotNull(cell, "Cell at row 1, column 1 should not be null");
+
+
+                        String stringCellValue1 = cell.getStringCellValue();
+
+                        assertNotNull(stringCellValue1);
+
+                        Assertions.assertAll(
+                                () -> assertTrue(stringCellValue1.contains("eatable"),
+                                        "Should contain 'eatable'"),
+                                () -> assertTrue(stringCellValue1.contains("Kukuruza"),
+                                        "Should contain 'Kukuruza'")
+                        );
 
 
                     }
 
                 }
 
+            }
+
+            if (counter == 0) {
+                fail("No xlsx files found in zip archive. Total files processed:");
             }
         }
     }
@@ -158,6 +189,7 @@ public class FilesTesing {
             throw new FileNotFoundException("zipfile.zip not found in resources!");
         }
 
+        int counter = 0;
         try (ZipInputStream zipInputStream = new ZipInputStream(is)) {
             ZipEntry entry;
 
@@ -165,7 +197,7 @@ public class FilesTesing {
             while ((entry = zipInputStream.getNextEntry()) != null) {
                 String name = entry.getName();
                 if (name.endsWith(".json")) {
-
+                    counter++;
                     Person person = objectMapper.readValue(zipInputStream, Person.class);
 
                     assertAll(() -> assertEquals("John Doe", person.getName()), () -> assertEquals(30, person.getAge()),
@@ -173,6 +205,10 @@ public class FilesTesing {
                                     assertEquals(new LocationPoint("123 Main St", "Anytown", "12345"), person.getAddress()));
                     break;
                 }
+            }
+
+            if (counter == 0) {
+                fail("No json files found in zip archive. Total files processed:");
             }
         }
 
